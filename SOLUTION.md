@@ -57,7 +57,46 @@ and JWT auth.
 
 ---
 
-## Chapter 2 — *getOne / create for products (to be written)*
+## Chapter 2 — getOne / create for products
+
+**Task:** *"Right now only the getAll method is supported for products. We have to implement
+getOne and create methods also."*
+
+**Decisions**
+
+- Added `GetProduct(id)` and `CreateProduct(request)` to `IProductsService` and its typed
+  client, plus `getproduct/{id:int}` and `createproduct` endpoints.
+- Kept the **existing (non-RESTful) naming style** (`getproduct`, `createproduct`) for
+  consistency with the pre-existing `getproducts`, and noted it as a deliberate choice. A
+  RESTful scheme (`GET products/{id}`, `POST products`) would be the alternative.
+- Introduced a dedicated **`CreateProductRequest`** DTO. The create contract genuinely
+  differs from the product response: the API expects a flat `categoryId` (int), while the
+  `Product` response carries a nested `category` object. Reusing `Product` would pollute the
+  response model and risk over-posting, so a separate request DTO keeps the contract clean.
+- Modeled **"not found" as data, not an exception**: `GetProduct` returns `Product?`, and the
+  endpoint returns a clean `404 NotFound`. Genuinely unexpected failures (5xx, network) are
+  left to surface to the existing `ProblemDetails`.
+- Used **`201 Created`** for creation, and `PostAsJsonAsync` for the request body.
+
+**Discovered while testing (live)**
+
+This external API returns **`400 Bad Request`**, not `404`, for a missing product id. Because
+the route is constrained to `{id:int}` and the URL is built by us, a `400`/`404` here can only
+mean "no such product" — so both are treated as not-found and mapped to a clean `404`. This is
+a deliberate, documented compromise scoped to this specific endpoint; it does **not** swallow
+other non-success codes.
+
+**Verified:** `getproduct/{existing id}` → `200`; `getproduct/{missing id}` → `404` (no
+exception); `createproduct` → `201 Created` with a new id. Confirmed that sending `categoryId`
+returns a full `Product` with nested `category`, validating the separate request DTO.
+
+**Open items (deferred to Chapter 5 — middleware):**
+1. Handling of genuinely unexpected errors (what the client sees, what gets logged).
+2. Whether to formalize the "400-as-not-found" quirk more robustly.
+3. Whether responses should carry descriptive messages (a `404` currently has no body).
+
+---
+
 ## Chapter 3 — *categories (to be written)*
 ## Chapter 4 — *JWT authentication (to be written)*
 ## Chapter 5 — *performance logging middleware (to be written)*
