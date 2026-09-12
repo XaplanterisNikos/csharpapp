@@ -1,3 +1,5 @@
+using System.Net;
+
 namespace CSharpApp.Application.Products;
 
 /// <summary>
@@ -49,5 +51,38 @@ public class ProductsService : IProductsService
 
     }
 
-    #endregion
+	/// <inheritdoc />
+	public async Task<Product?> GetProduct(int id)
+	{
+		_logger.LogInformation("Fetching product {ProductId} from the external API.", id);
+
+		var response = await _httpClient.GetAsync($"{_restApiSettings.Products}/{id}");
+
+		// Treat 400 or 404 responses as no result when the product does not exist.
+		if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.BadRequest)
+		{
+			_logger.LogInformation("Product {ProductId} was not found.", id);
+			return null;
+		}
+		// Any other non-success status is unexpected: let it surface.
+		response.EnsureSuccessStatusCode();
+
+		return await response.Content.ReadFromJsonAsync<Product>();
+	}
+
+	/// <inheritdoc />
+	public async Task<Product?> CreateProduct(CreateProductRequest request)
+	{
+		_logger.LogInformation("Creating a new product");
+
+		// PostAsJsonAsync serializes the request DTO to a JSON body and POSTs it in one call.
+		var response = await _httpClient.PostAsJsonAsync(_restApiSettings.Products, request);
+		response.EnsureSuccessStatusCode();
+
+		return await response.Content.ReadFromJsonAsync<Product>();
+	}
+
+	
+
+	#endregion
 }
