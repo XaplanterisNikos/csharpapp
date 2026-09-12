@@ -1,7 +1,3 @@
-using Microsoft.Extensions.Options;
-using Polly;
-using Polly.Extensions.Http;
-
 namespace CSharpApp.Infrastructure.Configuration;
 
 /// <summary>
@@ -13,9 +9,9 @@ public static class HttpConfiguration
 	#region Public API
 
 	/// <summary>
-	/// Registers <see cref="IProductsService"/> as a typed client backed by
-	/// <see cref="IHttpClientFactory"/>, configuring its base address, handler lifetime
-	/// and a transient-fault retry policy.
+	/// Registers all typed API clients (<see cref="IProductsService"/>, <see cref="ICategoriesService"/>)
+	/// backed by <see cref="IHttpClientFactory"/>, sharing the same base address, handler lifetime
+	/// and transient-fault retry policy.
 	/// </summary>
 	/// <param name="services">The service collection to add the client to.</param>
 	/// <param name="configuration">The application configuration used to read HTTP settings.</param>
@@ -27,29 +23,46 @@ public static class HttpConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-		// Read HttpClient settings once during registration for the handler lifetime.
 		var httpClientSettings = configuration.GetSection(nameof(HttpClientSettings))
-            .Get<HttpClientSettings>() ?? new HttpClientSettings();
+			.Get<HttpClientSettings>() ?? new HttpClientSettings();
 
-		// Register ProductsService as a typed client with an HttpClient managed by IHttpClientFactory.
-		services.AddHttpClient<IProductsService, ProductsService>((serviceProvider, client) =>
-        {
-            var restApiSettings =
-                serviceProvider.GetRequiredService<IOptions<RestApiSettings>>().Value;
-            client.BaseAddress = new Uri(restApiSettings.BaseUrl!);
-        })
-			// Rotate the underlying handler to pick up DNS changes.
-			.SetHandlerLifetime(TimeSpan.FromMinutes(httpClientSettings.LifeTime))
-			// Retry transient failures, including 5xx responses, timeouts, and network errors via Polly.
-			.AddPolicyHandler((serviceProvider, _) =>
-            {
-                var settings =
-                    serviceProvider.GetRequiredService<IOptions<HttpClientSettings>>().Value;
-                return GetRetryPolicy(settings);
-            });
+		// Centralize shared API client registration in a helper
+		AddApiClient<IProductsService, ProductsService>(services, httpClientSettings);
+		AddApiClient<ICategoriesService, CategoriesService>(services, httpClientSettings);
 
-        return services;
+		return services;
     }
+	#endregion
+
+	#region Private Helpers
+	/// <summary>
+	/// Registers a single typed client with the shared base address, handler lifetime and retry policy.
+	/// </summary>
+	/// <typeparam name="TInterface">The service interface to register.</typeparam>
+	/// <typeparam name="TImplementation">The concrete typed-client implementation.</typeparam>
+	/// <param name="services">The service collection.</param>
+	/// <param name="settings">The HTTP client settings driving lifetime and retries.</param>
+	/// <returns>The <see cref="IHttpClientBuilder"/> for the registered client.</returns>
+	private static IHttpClientBuilder AddApiClient<TInterface, TImplementation>(
+		IServiceCollection services,
+		HttpClientSettings settings)
+		where TInterface : class
+		where TImplementation : class, TInterface
+	{
+		return services.AddHttpClient<TInterface, TImplementation>((serviceProvider, client) =>
+		{
+			var restApiSettings =
+				serviceProvider.GetRequiredService<IOptions<RestApiSettings>>().Value;
+
+			client.BaseAddress = new Uri(restApiSettings.BaseUrl!);
+		})
+			.SetHandlerLifetime(TimeSpan.FromMinutes(settings.LifeTime))
+			.AddPolicyHandler((serviceProvider, _) =>
+			{
+				var s = serviceProvider.GetRequiredService<IOptions<HttpClientSettings>>().Value;
+				return GetRetryPolicy(s);
+			});
+	}
 	#endregion
 
 	#region Policies

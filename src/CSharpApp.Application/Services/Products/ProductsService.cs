@@ -1,6 +1,4 @@
-using System.Net;
-
-namespace CSharpApp.Application.Products;
+namespace CSharpApp.Application.Services.Products;
 
 /// <summary>
 /// Typed <see cref="HttpClient/> implementation of <see cref="IProductsService"/>.

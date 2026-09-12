@@ -1,4 +1,4 @@
-namespace CSharpApp.Core.Dtos;
+namespace CSharpApp.Core.Dtos.Products;
 
 public sealed class Product
 {

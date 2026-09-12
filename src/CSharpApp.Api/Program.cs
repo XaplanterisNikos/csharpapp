@@ -1,4 +1,7 @@
-using CSharpApp.Core.Dtos;
+
+using CSharpApp.Core.Dtos.Categories;
+using CSharpApp.Core.Interfaces.Categories;
+using CSharpApp.Core.Interfaces.Products;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +27,8 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 var versionedEndpointRouteBuilder = app.NewVersionedApi();
+
+#region Product EndPoints
 
 versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getproducts", async (IProductsService productsService) =>
     {
@@ -52,5 +57,35 @@ versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createproduct",
     })
     .WithName("CreateProduct")
     .HasApiVersion(1.0);
+
+#endregion
+
+#region Category EndPoints
+
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategories", async (ICategoriesService categoriesService) =>
+    {
+        var categories = await categoriesService.GetCategories();
+        return categories;
+    })
+    .WithName("GetCategories")
+    .HasApiVersion(1.0);
+
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategory/{id:int}", async (int id,ICategoriesService categoryService) =>
+    {
+        var category = await categoryService.GetCategory(id);
+        return category is null ? Results.NotFound() : Results.Ok(category);
+    })
+    .WithName("GetCategory")
+    .HasApiVersion(1.0);
+
+versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createcategory", async (CreateCategoryRequest request, ICategoriesService categoriesService) =>
+    {
+        var created = await categoriesService.CreateCategory(request);
+        return Results.Created($"api/v{{version:apiVersion}}/getcategory/{created?.Id}", created);
+    })
+    .WithName("CreateCategory")
+    .HasApiVersion(1.0);
+
+#endregion
 
 app.Run();

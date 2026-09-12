@@ -1,9 +1,9 @@
-﻿namespace CSharpApp.Core.Dtos;
+﻿namespace CSharpApp.Core.Dtos.Products;
 
 /// <summary>
 /// Request payload for creating a product, using a flat category ID as required by the external API.
 /// </summary>
-public class CreateProductRequest
+public sealed class CreateProductRequest
 {
 	/// <summary>The product title.</summary>
 	[JsonPropertyName("title")]

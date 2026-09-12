@@ -1,4 +1,4 @@
-namespace CSharpApp.Core.Interfaces;
+namespace CSharpApp.Core.Interfaces.Products;
 
 /// <summary>
 /// Provides read/write access to products served by the external REST API.
