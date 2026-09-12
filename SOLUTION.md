@@ -97,7 +97,46 @@ returns a full `Product` with nested `category`, validating the separate request
 
 ---
 
-## Chapter 3 — *categories (to be written)*
+## Chapter 3 — categories
+
+**Task:** *"Add implementation for categories."*
+
+**Decisions**
+
+- Mirrored the products pattern: `ICategoriesService` and a typed-client `CategoriesService`,
+  with `getcategories`, `getcategory/{id:int}` and `createcategory` endpoints in the same
+  naming style. Implemented getAll, getOne **and** create for parity with products.
+- Added a dedicated **`CreateCategoryRequest`** DTO (name, image), for the same
+  request-vs-response reasoning as products.
+- Reused the same "not found as null → 404" and "this API returns 400 for a missing id"
+  handling established in Chapter 2.
+
+**The leading-slash fix (predicted in Chapter 1)**
+
+The `Categories` setting was `"/categories"`. Combined with a base address ending in
+`/api/v1/`, a **leading slash makes it an absolute-path reference**: it keeps only the host and
+discards the base path, so the request would hit `https://api.escuelajs.co/categories` instead
+of `.../api/v1/categories`. The fix is to align the value with the working `products` entry —
+i.e. **remove** the leading slash (`/categories` → `categories`), not add one everywhere. For
+a base that ends in `/`, relative paths must **not** start with `/`. This is a data/config fix
+at the root cause rather than code that masks the inconsistency.
+
+**Structure & DRY**
+
+- Refactored `HttpConfiguration` so each typed client is registered through a single generic
+  helper `AddApiClient<TInterface, TImplementation>` that applies the shared base address,
+  handler lifetime and retry policy — so those live in one place for all clients.
+- Reorganized DTOs into per-feature folders (`Products`, `Categories`). Folder names are
+  **plural** on purpose: a folder named `Category` produces a namespace that clashes with the
+  `Category` type (CS0118 — "namespace used like a type"), so plural namespaces avoid the
+  ambiguity.
+- Removed a pre-existing duplicate `Microsoft.AspNetCore.OpenApi` package reference (NU1504).
+
+**Verified:** `getcategories` → `200` with the category list (confirming the slash fix live);
+`getcategory/{existing}` → `200`, `getcategory/{missing}` → `404`; `createcategory` → `201`.
+
+---
+
 ## Chapter 4 — *JWT authentication (to be written)*
 ## Chapter 5 — *performance logging middleware (to be written)*
 ## Chapter 6 — *CQRS, unit tests, docker (to be written)*
