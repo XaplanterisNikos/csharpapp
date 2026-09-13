@@ -8,6 +8,7 @@ builder.Logging.ClearProviders().AddSerilog(logger);
 builder.Services.AddOpenApi();
 builder.Services.AddDefaultConfiguration(builder.Configuration);
 builder.Services.AddHttpConfiguration(builder.Configuration);
+builder.Services.AddApplication();
 builder.Services.AddProblemDetails();
 builder.Services.AddApiVersioning();
 
@@ -29,31 +30,26 @@ var versionedEndpointRouteBuilder = app.NewVersionedApi();
 
 #region Product EndPoints
 
-versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getproducts", async (IProductsService productsService) =>
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getproducts", async (ISender mediator) =>
     {
-        var products = await productsService.GetProducts();
-        return products;
-    })
+		return await mediator.Send(new GetProductsQuery());
+	})
     .WithName("GetProducts")
     .HasApiVersion(1.0);
 
-versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getproduct/{id:int}",async (int id, IProductsService productService) =>
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getproduct/{id:int}",async (int id, ISender mediator) =>
     {
-        var product = await productService.GetProduct(id);
-
-		// Expected "not found" → clean 404; otherwise 200 with the product.
+		var product = await mediator.Send(new GetProductByIdQuery(id));
 		return product is null ? Results.NotFound() : Results.Ok(product);
-    })
+	})
     .WithName("GetProduct")
     .HasApiVersion(1.0);
 
-versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createproduct", async (CreateProductRequest request, IProductsService productService) =>
+versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createproduct", async (CreateProductRequest request, ISender mediator) =>
     {
-        var created = await productService.CreateProduct(request);
-
-		// Return 201 Created when a resource is successfully created.
+		var created = await mediator.Send(new CreateProductCommand(request));
 		return Results.Created($"api/v{{version:apiVersion}}/getproduct/{created?.Id}", created);
-    })
+	})
     .WithName("CreateProduct")
     .HasApiVersion(1.0);
 
@@ -61,27 +57,26 @@ versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createproduct",
 
 #region Category EndPoints
 
-versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategories", async (ICategoriesService categoriesService) =>
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategories", async (ISender mediator) =>
     {
-        var categories = await categoriesService.GetCategories();
-        return categories;
-    })
+		return await mediator.Send(new GetCategoriesQuery());
+	})
     .WithName("GetCategories")
     .HasApiVersion(1.0);
 
-versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategory/{id:int}", async (int id,ICategoriesService categoryService) =>
+versionedEndpointRouteBuilder.MapGet("api/v{version:apiVersion}/getcategory/{id:int}", async (int id, ISender mediator) =>
     {
-        var category = await categoryService.GetCategory(id);
-        return category is null ? Results.NotFound() : Results.Ok(category);
-    })
+		var category = await mediator.Send(new GetCategoryByIdQuery(id));
+		return category is null ? Results.NotFound() : Results.Ok(category);
+	})
     .WithName("GetCategory")
     .HasApiVersion(1.0);
 
-versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createcategory", async (CreateCategoryRequest request, ICategoriesService categoriesService) =>
+versionedEndpointRouteBuilder.MapPost("api/v{version:apiVersion}/createcategory", async (CreateCategoryRequest request, ISender mediator) =>
     {
-        var created = await categoriesService.CreateCategory(request);
-        return Results.Created($"api/v{{version:apiVersion}}/getcategory/{created?.Id}", created);
-    })
+		var created = await mediator.Send(new CreateCategoryCommand(request));
+		return Results.Created($"api/v{{version:apiVersion}}/getcategory/{created?.Id}", created);
+	})
     .WithName("CreateCategory")
     .HasApiVersion(1.0);
 

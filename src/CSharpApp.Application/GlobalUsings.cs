@@ -10,3 +10,7 @@ global using CSharpApp.Core.Dtos.Products;
 global using CSharpApp.Core.Dtos.Categories;
 global using System.Net;
 global using CSharpApp.Core.Interfaces.Auth;
+global using MediatR;
+global using FluentValidation;
+global using Microsoft.Extensions.DependencyInjection;
+global using CSharpApp.Application.Behaviors;
