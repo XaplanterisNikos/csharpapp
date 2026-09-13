@@ -167,5 +167,30 @@ The flow is simple: log in once with email + password, get back a token, and put
 
 ---
 
-## Chapter 5 — *performance logging middleware (to be written)*
+
+## Chapter 5 — request performance logging
+
+**Task:** *"We must measure and log the performance of the requests. Create a middleware to achieve this."*
+
+**The idea (in plain words)**
+
+Middleware is a small piece that sits on the request pipeline: every incoming request passes through it on the way in and the response passes back through it on the way out. That gives a natural place to start a timer before the request is handled and stop it after — and log how long it took. (It is the same pattern as the auth handler from Chapter 4, just for incoming requests instead of outgoing calls.)
+
+**Steps we took**
+
+1. A `RequestPerformanceMiddleware` class that starts a `Stopwatch`, passes the request down the pipeline, and then logs the method, path, status code and elapsed milliseconds.
+2. A small extension method (`UseRequestPerformanceLogging`) so it registers cleanly in one line.
+3. Registered it **first** in the pipeline, so the time measured covers the whole request.
+
+**A couple of decisions**
+
+- Wrote our own middleware because the task asks to "create a middleware". Serilog also has a built-in request logger (`UseSerilogRequestLogging`) that would do this in production; writing our own shows the mechanism.
+- Used structured logging (method, path, status, ms as separate fields) rather than one joined string, so the values stay searchable in the logs.
+- Wrapped the work in `try/finally`, so the timing is logged even if something further down throws.
+- Logged only safe metadata — method, path, status, time. On purpose we do **not** log headers, body or query values, because those can contain tokens or personal data.
+
+**Verified (live):** every call now produces a log line such as `HTTP GET /api/v1/getproducts responded 200 in 342 ms`, including error responses (e.g. a 404).
+
+---
+
 ## Chapter 6 — *CQRS, unit tests, docker (to be written)*
