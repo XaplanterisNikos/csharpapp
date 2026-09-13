@@ -1,8 +1,3 @@
-
-using CSharpApp.Core.Dtos.Categories;
-using CSharpApp.Core.Interfaces.Categories;
-using CSharpApp.Core.Interfaces.Products;
-
 var builder = WebApplication.CreateBuilder(args);
 
 var logger = new LoggerConfiguration().ReadFrom.Configuration(builder.Configuration).CreateLogger();
@@ -17,6 +12,10 @@ builder.Services.AddProblemDetails();
 builder.Services.AddApiVersioning();
 
 var app = builder.Build();
+
+// First in the pipeline so the measured time covers the entire request.
+app.UseRequestPerformanceLogging();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
