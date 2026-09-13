@@ -193,4 +193,36 @@ Middleware is a small piece that sits on the request pipeline: every incoming re
 
 ---
 
-## Chapter 6 — *CQRS, unit tests, docker (to be written)*
+
+## Chapter 6 — CQRS, tests and docker
+
+This chapter covers the "strong plus" and implementation items. CQRS is done first; unit tests and docker follow.
+
+### CQRS with MediatR
+
+**Task:** *"Using CQRS pattern will be considered as a strong plus."*
+
+**The idea (in plain words)**
+
+CQRS means separating operations that **read** (queries) from operations that **write** (commands). Each operation becomes its own small object with its own handler, instead of one service holding everything.
+
+I added it **last, on purpose**, as a refactor over the existing services rather than building it from the start. This was clean precisely because the services were already behind interfaces — the endpoints and services didn't need rewriting, only a new layer on top. A "strong plus" is an optional layer; being able to add it painlessly at the end is the payoff of putting sensible boundaries in place early.
+
+**How it fits our code**
+
+The flow changed from `endpoint → service → API` to `endpoint → mediator → handler → service → API`. The handlers are deliberately **thin**: they orchestrate, and delegate the actual HTTP work to the existing services. Those services act as a **gateway** that hides the typed `HttpClient`, the auth handler and the resilience policy. In a typical app the handler would talk to a `DbContext`; here the "database" is a third-party API behind authentication, so a gateway is the right equivalent. CQRS separates reads from writes — it does not forbid a data-access abstraction.
+
+**Steps**
+
+1. A command or query per operation (get all, get by id, create — for both products and categories), each implementing MediatR's `IRequest<T>`.
+2. A handler per request that calls the matching service method.
+3. Endpoints now send requests through `ISender`, so they no longer depend on the service implementation — only on the request object.
+4. Registered MediatR through an `AddApplication` extension inside the Application project, so each layer registers its own services.
+
+### Request validation (FluentValidation)
+
+Added a `ValidationBehavior` into the MediatR pipeline — a small piece that runs before every handler and validates the request first. If a rule fails, it stops the request before the handler runs. Validators were added for the two create commands (e.g. title required, price ≥ 0, category image must be a valid URL — the same invalid-image case that had caused a 400 earlier). This is where CQRS and FluentValidation fit together: the validator sits in the request pipeline, so validation is central rather than scattered across endpoints.
+
+**Verified:** all six endpoints work through the mediator exactly as before; an invalid create command is stopped by the validator with a clear message; a valid one still returns `201`.
+
+*(Unit tests and docker support: added next.)*
