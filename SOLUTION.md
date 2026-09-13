@@ -137,6 +137,35 @@ at the root cause rather than code that masks the inconsistency.
 
 ---
 
-## Chapter 4 — *JWT authentication (to be written)*
+
+## Chapter 4 — JWT authentication
+
+**Task:** *"The 3rd party service supports JWT authentication. Implement and support it, using the credentials in appsettings.json."*
+
+**The idea (in plain words)**
+
+The credentials in appsettings belong to the third-party API (escuelajs). So this is *outbound* auth: our app logs in to the third-party service and sends a token on its calls. We are not protecting our own endpoints — we are the client that authenticates.
+
+The flow is simple: log in once with email + password, get back a token, and put that token on every following call as an `Authorization: Bearer ...` header. The password is sent only once (at login); after that we travel with the token.
+
+**Steps we took**
+
+1. Two small DTOs for the login call: what we send (email, password) and what we get back (the token).
+2. A `TokenProvider` that logs in, keeps the token in memory, and hands it out. It is a singleton so the whole app shares one token, and it logs in only once instead of on every call.
+3. An `AuthenticationDelegatingHandler` — a small piece that sits on the outgoing calls, adds the token automatically, and if the token is rejected (401) refreshes it once and retries. This keeps the token logic out of the services: they just call the API and the token is added behind the scenes.
+4. Wiring: the business clients (products, categories) get the handler; a separate login-only client does **not** get it — otherwise the login call would trigger the handler, which would log in again, forever (an endless loop). Keeping that client separate breaks the loop.
+
+**A couple of decisions**
+
+- When a token is rejected we simply log in again (we already hold the credentials), instead of using the refresh token. Simpler, and it needs no extra settings. The refresh-token flow would matter more if we did not hold the password.
+- Added a startup check so the app fails immediately, with a clear message, if a required setting is missing — instead of failing later on the first call.
+- Fixed the `Auth` path the same way as `Categories` (removed the leading slash), and also trim it in code so a stray slash can't break it.
+
+**On the credentials:** they stay in appsettings because the assignment asks for that and the project must run as-is. In a real project they would move to user-secrets (dev) or environment variables / a secrets vault (prod), and a real password would never be committed.
+
+**Verified (live, via logs):** the first call to `getproducts` logs in once; the second call reuses the cached token and does not log in again. Logging in against the third-party API directly also returns a valid token.
+
+---
+
 ## Chapter 5 — *performance logging middleware (to be written)*
 ## Chapter 6 — *CQRS, unit tests, docker (to be written)*
