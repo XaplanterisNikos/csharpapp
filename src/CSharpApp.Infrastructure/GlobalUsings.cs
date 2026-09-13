@@ -10,3 +10,7 @@ global using Polly;
 global using Polly.Extensions.Http;
 global using CSharpApp.Application.Services.Categories;
 global using CSharpApp.Core.Interfaces.Categories;
+global using CSharpApp.Core.Interfaces.Auth;
+global using System.Net.Http.Headers;
+global using CSharpApp.Application.Auth;
+global using CSharpApp.Infrastructure.Handlers;

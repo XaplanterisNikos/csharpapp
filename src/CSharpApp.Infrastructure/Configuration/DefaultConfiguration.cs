@@ -18,8 +18,18 @@ public static class DefaultConfiguration
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.Configure<RestApiSettings>(configuration!.GetSection(nameof(RestApiSettings)));
-        services.Configure<HttpClientSettings>(configuration.GetSection(nameof(HttpClientSettings)));
+		// Bind and validate RestApiSettings at startup to ensure required values are available.
+		services.AddOptions<RestApiSettings>()
+		.Bind(configuration.GetSection(nameof(RestApiSettings)))
+		.Validate(s => !string.IsNullOrWhiteSpace(s.BaseUrl), "RestApiSettings.BaseUrl is required.")
+		.Validate(s => !string.IsNullOrWhiteSpace(s.Products), "RestApiSettings.Products is required.")
+		.Validate(s => !string.IsNullOrWhiteSpace(s.Categories), "RestApiSettings.Categories is required.")
+		.Validate(s => !string.IsNullOrWhiteSpace(s.Auth), "RestApiSettings.Auth is required.")
+		.Validate(s => !string.IsNullOrWhiteSpace(s.Username), "RestApiSettings.Username is required.")
+		.Validate(s => !string.IsNullOrWhiteSpace(s.Password), "RestApiSettings.Password is required.")
+		.ValidateOnStart();
+
+		services.Configure<HttpClientSettings>(configuration.GetSection(nameof(HttpClientSettings)));
 
         return services;
     }

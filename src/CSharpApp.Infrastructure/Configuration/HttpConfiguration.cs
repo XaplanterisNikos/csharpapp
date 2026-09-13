@@ -26,6 +26,21 @@ public static class HttpConfiguration
 		var httpClientSettings = configuration.GetSection(nameof(HttpClientSettings))
 			.Get<HttpClientSettings>() ?? new HttpClientSettings();
 
+		// The singleton token provider shares the cached token across the application.
+		services.AddSingleton<ITokenProvider, TokenProvider>();
+
+		// Register the auth handler as transient to prevent long-term capture.
+		services.AddTransient<AuthenticationDelegatingHandler>();
+
+		// Use a login-only client without the auth handler to prevent recursion.
+		services.AddHttpClient(TokenProvider.AuthClientName, (serviceProvider, client) =>
+			{
+				var restApiSettings = serviceProvider.GetRequiredService<IOptions<RestApiSettings>>().Value;
+
+				client.BaseAddress = new Uri(restApiSettings.BaseUrl!);
+			})
+			.SetHandlerLifetime(TimeSpan.FromMinutes(httpClientSettings.LifeTime));
+
 		// Centralize shared API client registration in a helper
 		AddApiClient<IProductsService, ProductsService>(services, httpClientSettings);
 		AddApiClient<ICategoriesService, CategoriesService>(services, httpClientSettings);
@@ -61,7 +76,9 @@ public static class HttpConfiguration
 			{
 				var s = serviceProvider.GetRequiredService<IOptions<HttpClientSettings>>().Value;
 				return GetRetryPolicy(s);
-			});
+			})
+			// Attach the auth handler to add bearer tokens and retry once after a 401 response.
+			.AddHttpMessageHandler<AuthenticationDelegatingHandler>();
 	}
 	#endregion
 

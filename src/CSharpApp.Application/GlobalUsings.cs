@@ -9,3 +9,4 @@ global using System.Net.Http.Json;
 global using CSharpApp.Core.Dtos.Products;
 global using CSharpApp.Core.Dtos.Categories;
 global using System.Net;
+global using CSharpApp.Core.Interfaces.Auth;
