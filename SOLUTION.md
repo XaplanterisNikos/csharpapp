@@ -2,7 +2,7 @@
 
 This document explains **how** I approached the assignment — the problems I found and the
 reasoning behind each decision — rather than just the final code. It complements the commit
-history: the commits show *what* changed, this document shows *why*.
+history: the commits show _what_ changed, this document shows _why_.
 
 I worked one topic at a time: read the existing code, note the problems, decide on an
 approach, then implement.
@@ -11,8 +11,8 @@ approach, then implement.
 
 ## Chapter 1 — HTTP client refactoring
 
-**Task:** *"The use of http client is not so much efficient. Let's make a different, more
-solid, approach/implementation."*
+**Task:** _"The use of http client is not so much efficient. Let's make a different, more
+solid, approach/implementation."_
 
 **What I found**
 
@@ -26,8 +26,8 @@ solid, approach/implementation."*
 
 **Why these matter**
 
-A manual `HttpClient` forces a bad trade-off: a new client per call risks *socket
-exhaustion*, while one client forever risks *stale DNS*. Mutating `BaseAddress` on a shared
+A manual `HttpClient` forces a bad trade-off: a new client per call risks _socket
+exhaustion_, while one client forever risks _stale DNS_. Mutating `BaseAddress` on a shared
 instance is a latent thread-safety issue. `Deserialize` can return `null`. And
 `BuildServiceProvider()` builds a second DI container needlessly.
 
@@ -42,7 +42,7 @@ instance is a latent thread-safety issue. `Deserialize` can return `null`. And
   connects the three previously-unused settings: `LifeTime` → handler lifetime,
   `RetryCount` → retries, `SleepDuration` → base delay.
 - Removed the old `AddSingleton` registration: a typed client is **transient**, so the
-  factory can rotate the handler (a singleton would capture it — a *captive dependency*).
+  factory can rotate the handler (a singleton would capture it — a _captive dependency_).
 - Passed `IConfiguration` in explicitly instead of `BuildServiceProvider()`.
 - Replaced the manual fetch/deserialize with `GetFromJsonAsync<T>` plus a null guard, and
   added XML doc comments (with `<inheritdoc />` on the implementation).
@@ -59,8 +59,8 @@ and JWT auth.
 
 ## Chapter 2 — getOne / create for products
 
-**Task:** *"Right now only the getAll method is supported for products. We have to implement
-getOne and create methods also."*
+**Task:** _"Right now only the getAll method is supported for products. We have to implement
+getOne and create methods also."_
 
 **Decisions**
 
@@ -90,16 +90,11 @@ other non-success codes.
 exception); `createproduct` → `201 Created` with a new id. Confirmed that sending `categoryId`
 returns a full `Product` with nested `category`, validating the separate request DTO.
 
-**Open items (deferred to Chapter 5 — middleware):**
-1. Handling of genuinely unexpected errors (what the client sees, what gets logged).
-2. Whether to formalize the "400-as-not-found" quirk more robustly.
-3. Whether responses should carry descriptive messages (a `404` currently has no body).
-
 ---
 
 ## Chapter 3 — categories
 
-**Task:** *"Add implementation for categories."*
+**Task:** _"Add implementation for categories."_
 
 **Decisions**
 
@@ -126,25 +121,20 @@ at the root cause rather than code that masks the inconsistency.
 - Refactored `HttpConfiguration` so each typed client is registered through a single generic
   helper `AddApiClient<TInterface, TImplementation>` that applies the shared base address,
   handler lifetime and retry policy — so those live in one place for all clients.
-- Reorganized DTOs into per-feature folders (`Products`, `Categories`). Folder names are
-  **plural** on purpose: a folder named `Category` produces a namespace that clashes with the
-  `Category` type (CS0118 — "namespace used like a type"), so plural namespaces avoid the
-  ambiguity.
-- Removed a pre-existing duplicate `Microsoft.AspNetCore.OpenApi` package reference (NU1504).
+- Reorganized DTOs into per-feature folders (`Products`, `Categories`).
 
 **Verified:** `getcategories` → `200` with the category list (confirming the slash fix live);
 `getcategory/{existing}` → `200`, `getcategory/{missing}` → `404`; `createcategory` → `201`.
 
 ---
 
-
 ## Chapter 4 — JWT authentication
 
-**Task:** *"The 3rd party service supports JWT authentication. Implement and support it, using the credentials in appsettings.json."*
+**Task:** _"The 3rd party service supports JWT authentication. Implement and support it, using the credentials in appsettings.json."_
 
-**The idea (in plain words)**
+**The idea**
 
-The credentials in appsettings belong to the third-party API (escuelajs). So this is *outbound* auth: our app logs in to the third-party service and sends a token on its calls. We are not protecting our own endpoints — we are the client that authenticates.
+The credentials in appsettings belong to the third-party API (escuelajs). So this is _outbound_ auth: our app logs in to the third-party service and sends a token on its calls. We are not protecting our own endpoints — we are the client that authenticates.
 
 The flow is simple: log in once with email + password, get back a token, and put that token on every following call as an `Authorization: Bearer ...` header. The password is sent only once (at login); after that we travel with the token.
 
@@ -167,12 +157,11 @@ The flow is simple: log in once with email + password, get back a token, and put
 
 ---
 
-
 ## Chapter 5 — request performance logging
 
-**Task:** *"We must measure and log the performance of the requests. Create a middleware to achieve this."*
+**Task:** _"We must measure and log the performance of the requests. Create a middleware to achieve this."_
 
-**The idea (in plain words)**
+**The idea**
 
 Middleware is a small piece that sits on the request pipeline: every incoming request passes through it on the way in and the response passes back through it on the way out. That gives a natural place to start a timer before the request is handled and stop it after — and log how long it took. (It is the same pattern as the auth handler from Chapter 4, just for incoming requests instead of outgoing calls.)
 
@@ -193,16 +182,15 @@ Middleware is a small piece that sits on the request pipeline: every incoming re
 
 ---
 
-
 ## Chapter 6 — CQRS, tests and docker
 
-This chapter covers the "strong plus" and implementation items. CQRS is done first; unit tests and docker follow.
+CQRS is done first; unit tests and docker follow.
 
 ### CQRS with MediatR
 
-**Task:** *"Using CQRS pattern will be considered as a strong plus."*
+**Task:** _"Using CQRS pattern will be considered as a strong plus."_
 
-**The idea (in plain words)**
+**The idea**
 
 CQRS means separating operations that **read** (queries) from operations that **write** (commands). Each operation becomes its own small object with its own handler, instead of one service holding everything.
 
@@ -225,4 +213,29 @@ Added a `ValidationBehavior` into the MediatR pipeline — a small piece that ru
 
 **Verified:** all six endpoints work through the mediator exactly as before; an invalid create command is stopped by the validator with a clear message; a valid one still returns `201`.
 
-*(Unit tests and docker support: added next.)*
+### Unit tests
+
+**Task:** _"Add unit testing."_
+
+Added an xUnit test project under `tests/`, referencing the Application project. The tests cover the CQRS handlers and the validators — the logic added in this chapter.
+
+**Approach**
+
+- Each handler test uses **Moq** to replace the service with a stand-in, so the test checks only the handler's own logic without any real HTTP call, network or token. This keeps the tests fast, deterministic and isolated (true unit tests, not integration tests).
+- Handler tests follow the Arrange–Act–Assert shape: set up the fake service, call `Handle`, then assert the result and that the service was called once. The get-by-id handlers also have a test for the not-found path (service returns null → handler returns null).
+- Validator tests need no mocks: they build the validator directly, feed it a valid and an invalid command, and check the result — including the invalid-image-URL case.
+- Used **xUnit's built-in assertions** rather than FluentAssertions, because FluentAssertions moved to a commercial licence (v8+); avoiding it keeps the delivered code free of licence obligations.
+
+**Verified:** `dotnet test` → 14 tests, all passing, and the solution builds with no warnings.
+
+### Docker support
+
+**Task:** _"Add docker support."_
+
+Added a multi-stage `Dockerfile` at the repository root, plus a `.dockerignore`.
+
+- **Build stage** (`sdk` image): copies the project files first and restores (so package restore is cached and only re-runs when a dependency changes), then copies the source and publishes a Release build.
+- **Runtime stage** (`aspnet` image): a small image that copies only the published output from the build stage and runs it. The source code and build tools stay out of the final image, keeping it small.
+- `.dockerignore` keeps `bin/`, `obj/` and `.git/` out of the build context.
+
+**Verified:** `docker build` produces an image, `docker run -p 8080:8080` serves the API, and the endpoints respond as expected from inside the container.
