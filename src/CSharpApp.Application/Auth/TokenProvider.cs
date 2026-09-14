@@ -101,7 +101,9 @@ public sealed class TokenProvider : ITokenProvider
 
 		// Remove a leading slash so the relative path resolves against the versioned base address.
 		// Auth is validated at startup (ValidateOnStart),so it is guaranteed non-null here.
-		var authPath = _restApiSettings.Auth.TrimStart('/');
+		var authPath = (_restApiSettings.Auth ?? throw new InvalidOperationException(
+				"RestApiSettings.Auth is not configured."))
+				.TrimStart('/');
 
 		var response = await client.PostAsJsonAsync(authPath, request, cancellationToken);
 		response.EnsureSuccessStatusCode();

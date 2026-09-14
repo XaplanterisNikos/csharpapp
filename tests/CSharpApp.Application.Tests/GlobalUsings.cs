@@ -1,0 +1,13 @@
+﻿global using Xunit;
+global using Moq;
+global using CSharpApp.Core.Dtos.Products;
+global using CSharpApp.Application.Categories.Commands.CreateCategory;
+global using CSharpApp.Application.Categories.Commands.CreateCategory.Validator;
+global using CSharpApp.Core.Dtos.Categories;
+global using CSharpApp.Application.Products.Commands.CreateProduct;
+global using CSharpApp.Application.Products.Commands.CreateProduct.Validator;
+global using CSharpApp.Core.Interfaces.Categories;
+global using CSharpApp.Application.Categories.Queries.GetCategoryById;
+global using CSharpApp.Application.Categories.Queries.GetCategories;
+global using CSharpApp.Core.Interfaces.Products;
+global using CSharpApp.Application.Products.Queries.GetProductById;
